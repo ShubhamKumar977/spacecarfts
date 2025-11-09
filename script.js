@@ -96,12 +96,14 @@ canvas.addEventListener('click', (e) => {
 // Fetch astronaut data with fallback
 async function fetchAstronauts() {
     try {
-        // Try direct API first
-        let response = await fetch(ASTROS_API, { mode: 'cors' });
-        if (!response.ok) {
-            // Try with CORS proxy
-            response = await fetch(CORS_PROXY + encodeURIComponent(ASTROS_API));
-        }
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+        
+        const response = await fetch(CORS_PROXY + ASTROS_API, { 
+            signal: controller.signal 
+        });
+        clearTimeout(timeoutId);
+        
         const data = await response.json();
         astronautData = data;
         updateCount(data);
@@ -116,12 +118,14 @@ async function fetchAstronauts() {
 // Fetch ISS position with fallback to simulated orbit
 async function fetchISSPosition() {
     try {
-        // Try direct API first
-        let response = await fetch(ISS_POSITION_API, { mode: 'cors' });
-        if (!response.ok) {
-            // Try with CORS proxy
-            response = await fetch(CORS_PROXY + encodeURIComponent(ISS_POSITION_API));
-        }
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+        
+        const response = await fetch(CORS_PROXY + ISS_POSITION_API, { 
+            signal: controller.signal 
+        });
+        clearTimeout(timeoutId);
+        
         const data = await response.json();
         if (data.iss_position) {
             spacecraftPositions['ISS'] = {
@@ -132,7 +136,6 @@ async function fetchISSPosition() {
             console.log('✓ ISS position updated');
         }
     } catch (error) {
-        console.warn('Using simulated ISS orbit:', error.message);
         // Simulate ISS orbit (51.6° inclination, moving west to east)
         issOrbitAngle += 0.001;
         const lat = 51.6 * Math.sin(issOrbitAngle * 3);
