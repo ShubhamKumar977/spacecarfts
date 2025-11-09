@@ -17,7 +17,7 @@ let issOrbitAngle = 0;
 
 // Current astronaut data (updated November 2025)
 const fallbackData = {
-    number: 10,
+    number: 13,
     people: [
         { name: "Oleg Kononenko", craft: "ISS" },
         { name: "Nikolai Chub", craft: "ISS" },
@@ -28,7 +28,10 @@ const fallbackData = {
         { name: "Alexander Grebenkin", craft: "ISS" },
         { name: "Butch Wilmore", craft: "ISS" },
         { name: "Sunita Williams", craft: "ISS" },
-        { name: "Don Pettit", craft: "ISS" }
+        { name: "Don Pettit", craft: "ISS" },
+        { name: "Li Cong", craft: "Tiangong" },
+        { name: "Li Guangsu", craft: "Tiangong" },
+        { name: "Ye Guangfu", craft: "Tiangong" }
     ]
 };
 
@@ -115,10 +118,23 @@ function updateISSPosition() {
     };
 }
 
-// Update ISS position with realistic orbit simulation
+// Simulate Tiangong orbit continuously (42.7° inclination)
+function updateTiangongPosition() {
+    issOrbitAngle += 0.001;
+    const lat = 42.7 * Math.sin(issOrbitAngle * 2.8 + 1.5); // Slightly different phase
+    const lon = ((issOrbitAngle * 180 / Math.PI * 10) + 45) % 360 - 180; // Offset from ISS
+    spacecraftPositions['Tiangong'] = {
+        latitude: lat,
+        longitude: lon,
+        timestamp: Date.now() / 1000
+    };
+}
+
+// Update spacecraft positions with realistic orbit simulation
 async function fetchISSPosition() {
     updateISSPosition();
-    console.log('✓ ISS orbit simulation active');
+    updateTiangongPosition();
+    console.log('✓ ISS and Tiangong orbit simulation active');
 }
 
 // Update count display
@@ -571,5 +587,8 @@ fetchAstronauts();
 fetchISSPosition();
 animate();
 
-// Update simulated ISS position continuously for smooth orbit
-setInterval(updateISSPosition, 100);
+// Update simulated spacecraft positions continuously for smooth orbit
+setInterval(() => {
+    updateISSPosition();
+    updateTiangongPosition();
+}, 100);

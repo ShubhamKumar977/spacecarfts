@@ -68,7 +68,11 @@ The simulation provides smooth, realistic spacecraft movement around Earth.
 
 ## Current Crew
 
-The app displays 10 astronauts currently aboard the International Space Station, with realistic orbital simulation showing the ISS's actual path around Earth.
+The app displays 13 people currently in space:
+- **ISS (International Space Station)**: 10 astronauts
+- **Tiangong (Chinese Space Station)**: 3 taikonauts
+
+Both stations have realistic orbital simulations showing their actual paths around Earth.
 
 ## Future Enhancements
 
