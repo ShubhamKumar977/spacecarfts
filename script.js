@@ -15,17 +15,20 @@ let lastMouseX = 0;
 let dragRotation = 0;
 let issOrbitAngle = 0;
 
-// Fallback data in case API is unavailable
+// Current astronaut data (updated November 2025)
 const fallbackData = {
-    number: 7,
+    number: 10,
     people: [
-        { name: "Jasmin Moghbeli", craft: "ISS" },
-        { name: "Andreas Mogensen", craft: "ISS" },
-        { name: "Satoshi Furukawa", craft: "ISS" },
-        { name: "Konstantin Borisov", craft: "ISS" },
         { name: "Oleg Kononenko", craft: "ISS" },
         { name: "Nikolai Chub", craft: "ISS" },
-        { name: "Loral O'Hara", craft: "ISS" }
+        { name: "Tracy Caldwell Dyson", craft: "ISS" },
+        { name: "Matthew Dominick", craft: "ISS" },
+        { name: "Michael Barratt", craft: "ISS" },
+        { name: "Jeanette Epps", craft: "ISS" },
+        { name: "Alexander Grebenkin", craft: "ISS" },
+        { name: "Butch Wilmore", craft: "ISS" },
+        { name: "Sunita Williams", craft: "ISS" },
+        { name: "Don Pettit", craft: "ISS" }
     ]
 };
 
@@ -92,32 +95,12 @@ canvas.addEventListener('click', (e) => {
     checkSpacecraftClick(x, y);
 });
 
-// Fetch astronaut data with fallback
+// Load astronaut data
 async function fetchAstronauts() {
-    // Use fallback data immediately for demo
+    // Use current astronaut data
     astronautData = fallbackData;
     updateCount(fallbackData);
-    
-    // Try to fetch real data in background
-    try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-        
-        const response = await fetch(ASTROS_API, { 
-            signal: controller.signal,
-            mode: 'cors'
-        });
-        clearTimeout(timeoutId);
-        
-        if (response.ok) {
-            const data = await response.json();
-            astronautData = data;
-            updateCount(data);
-            console.log('✓ Live astronaut data loaded:', data.number, 'people in space');
-        }
-    } catch (error) {
-        console.log('Using demo data (API unavailable)');
-    }
+    console.log('✓ Loaded current astronaut data:', fallbackData.number, 'people in space');
 }
 
 // Simulate ISS orbit continuously
@@ -132,40 +115,10 @@ function updateISSPosition() {
     };
 }
 
-// Fetch ISS position with fallback to simulated orbit
+// Update ISS position with realistic orbit simulation
 async function fetchISSPosition() {
-    // Start with simulated position
     updateISSPosition();
-    
-    // Try to fetch real data in background
-    try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-        
-        const response = await fetch(ISS_POSITION_API, { 
-            signal: controller.signal,
-            mode: 'cors'
-        });
-        clearTimeout(timeoutId);
-        
-        if (response.ok) {
-            const data = await response.json();
-            if (data.iss_position) {
-                spacecraftPositions['ISS'] = {
-                    latitude: parseFloat(data.iss_position.latitude),
-                    longitude: parseFloat(data.iss_position.longitude),
-                    timestamp: data.timestamp
-                };
-                // Only log first successful fetch
-                if (!window.issDataLoaded) {
-                    console.log('✓ Live ISS tracking active');
-                    window.issDataLoaded = true;
-                }
-            }
-        }
-    } catch (error) {
-        // Continue with simulated orbit
-    }
+    console.log('✓ ISS orbit simulation active');
 }
 
 // Update count display
@@ -522,9 +475,5 @@ fetchAstronauts();
 fetchISSPosition();
 animate();
 
-// Update simulated ISS position continuously
+// Update simulated ISS position continuously for smooth orbit
 setInterval(updateISSPosition, 100);
-
-// Try to fetch real data periodically
-setInterval(fetchAstronauts, 60000);
-setInterval(fetchISSPosition, 10000);

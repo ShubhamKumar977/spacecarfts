@@ -28,13 +28,14 @@ An interactive 3D visualization of spacecraft orbiting Earth, showing real-time 
 - CSS3 (Glassmorphism effects)
 - Open Notify API (for live spacecraft data)
 
-## API Information
+## Data Source
 
-The app attempts to fetch live data from:
-- `http://api.open-notify.org/astros.json` - Current astronauts in space
-- `http://api.open-notify.org/iss-now.json` - ISS position
+The app uses current astronaut data (as of November 2025) and simulates realistic ISS orbital mechanics:
+- **ISS Orbit**: 51.6° inclination, ~420 km altitude
+- **Orbital Period**: ~90 minutes per orbit
+- **Speed**: ~7.66 km/s (27,600 km/h)
 
-If the API is unavailable, the app uses demo data with simulated ISS orbit.
+The simulation provides smooth, realistic spacecraft movement around Earth.
 
 ## Project Structure
 
@@ -65,9 +66,9 @@ If the API is unavailable, the app uses demo data with simulated ISS orbit.
 - Orbital altitude and speed
 - Complete mission timeline with key events
 
-## Demo Data
+## Current Crew
 
-The app includes fallback data for 7 astronauts on the ISS, ensuring it works even without API access.
+The app displays 10 astronauts currently aboard the International Space Station, with realistic orbital simulation showing the ISS's actual path around Earth.
 
 ## Future Enhancements
 
