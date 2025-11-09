@@ -103,21 +103,20 @@ async function fetchAstronauts() {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000);
         
-        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(ASTROS_API)}`;
-        const response = await fetch(proxyUrl, { 
-            signal: controller.signal 
+        const response = await fetch(ASTROS_API, { 
+            signal: controller.signal,
+            mode: 'cors'
         });
         clearTimeout(timeoutId);
         
         if (response.ok) {
-            const result = await response.json();
-            const data = JSON.parse(result.contents);
+            const data = await response.json();
             astronautData = data;
             updateCount(data);
             console.log('✓ Live astronaut data loaded:', data.number, 'people in space');
         }
     } catch (error) {
-        // Silently continue with demo data
+        console.log('Using demo data (API unavailable)');
     }
 }
 
@@ -143,15 +142,14 @@ async function fetchISSPosition() {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000);
         
-        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(ISS_POSITION_API)}`;
-        const response = await fetch(proxyUrl, { 
-            signal: controller.signal 
+        const response = await fetch(ISS_POSITION_API, { 
+            signal: controller.signal,
+            mode: 'cors'
         });
         clearTimeout(timeoutId);
         
         if (response.ok) {
-            const result = await response.json();
-            const data = JSON.parse(result.contents);
+            const data = await response.json();
             if (data.iss_position) {
                 spacecraftPositions['ISS'] = {
                     latitude: parseFloat(data.iss_position.latitude),
