@@ -1,6 +1,6 @@
 const ASTROS_API = 'http://api.open-notify.org/astros.json';
 const ISS_POSITION_API = 'http://api.open-notify.org/iss-now.json';
-const CORS_PROXY = 'https://corsproxy.io/?';
+const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
 const canvas = document.getElementById('globe');
 const ctx = canvas.getContext('2d');
 
@@ -95,56 +95,72 @@ canvas.addEventListener('click', (e) => {
 
 // Fetch astronaut data with fallback
 async function fetchAstronauts() {
+    // Use fallback data immediately for demo
+    astronautData = fallbackData;
+    updateCount(fallbackData);
+    console.log('✓ Using demo astronaut data');
+    
+    // Try to fetch real data in background
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
         
-        const response = await fetch(CORS_PROXY + ASTROS_API, { 
+        const response = await fetch(CORS_PROXY + encodeURIComponent(ASTROS_API), { 
             signal: controller.signal 
         });
         clearTimeout(timeoutId);
         
-        const data = await response.json();
-        astronautData = data;
-        updateCount(data);
-        console.log('✓ Astronaut data loaded successfully');
+        if (response.ok) {
+            const data = await response.json();
+            astronautData = data;
+            updateCount(data);
+            console.log('✓ Real astronaut data loaded');
+        }
     } catch (error) {
-        console.warn('Using fallback astronaut data:', error.message);
-        astronautData = fallbackData;
-        updateCount(fallbackData);
+        console.log('Continuing with demo data');
     }
+}
+
+// Simulate ISS orbit continuously
+function updateISSPosition() {
+    issOrbitAngle += 0.001;
+    const lat = 51.6 * Math.sin(issOrbitAngle * 3);
+    const lon = (issOrbitAngle * 180 / Math.PI * 10) % 360 - 180;
+    spacecraftPositions['ISS'] = {
+        latitude: lat,
+        longitude: lon,
+        timestamp: Date.now() / 1000
+    };
 }
 
 // Fetch ISS position with fallback to simulated orbit
 async function fetchISSPosition() {
+    // Start with simulated position
+    updateISSPosition();
+    
+    // Try to fetch real data in background
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
         
-        const response = await fetch(CORS_PROXY + ISS_POSITION_API, { 
+        const response = await fetch(CORS_PROXY + encodeURIComponent(ISS_POSITION_API), { 
             signal: controller.signal 
         });
         clearTimeout(timeoutId);
         
-        const data = await response.json();
-        if (data.iss_position) {
-            spacecraftPositions['ISS'] = {
-                latitude: parseFloat(data.iss_position.latitude),
-                longitude: parseFloat(data.iss_position.longitude),
-                timestamp: data.timestamp
-            };
-            console.log('✓ ISS position updated');
+        if (response.ok) {
+            const data = await response.json();
+            if (data.iss_position) {
+                spacecraftPositions['ISS'] = {
+                    latitude: parseFloat(data.iss_position.latitude),
+                    longitude: parseFloat(data.iss_position.longitude),
+                    timestamp: data.timestamp
+                };
+                console.log('✓ Real ISS position loaded');
+            }
         }
     } catch (error) {
-        // Simulate ISS orbit (51.6° inclination, moving west to east)
-        issOrbitAngle += 0.001;
-        const lat = 51.6 * Math.sin(issOrbitAngle * 3);
-        const lon = (issOrbitAngle * 180 / Math.PI * 10) % 360 - 180;
-        spacecraftPositions['ISS'] = {
-            latitude: lat,
-            longitude: lon,
-            timestamp: Date.now() / 1000
-        };
+        // Continue with simulated orbit
     }
 }
 
@@ -502,6 +518,9 @@ fetchAstronauts();
 fetchISSPosition();
 animate();
 
-// Update data periodically
-setInterval(fetchAstronauts, 30000);
-setInterval(fetchISSPosition, 5000); // ISS position updates more frequently
+// Update simulated ISS position continuously
+setInterval(updateISSPosition, 100);
+
+// Try to fetch real data periodically
+setInterval(fetchAstronauts, 60000);
+setInterval(fetchISSPosition, 10000);
