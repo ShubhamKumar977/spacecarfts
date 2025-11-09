@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Spacecraft Tracker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🌍 Live Spacecraft Tracker</h1>
+        <div class="info-panel">
+            <h2>People in Space: <span id="count">Loading...</span></h2>
+            <p class="hint">Click on any spacecraft to view details</p>
+        </div>
+        <div class="globe-container">
+            <canvas id="globe"></canvas>
+        </div>
+        <div class="legend">
+            <p>🛸 Spacecraft positions update in real-time</p>
+            <p>🖱️ Drag to rotate the Earth</p>
+        </div>
+    </div>
+
+    <!-- Modal for spacecraft details -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="modal-title"></h2>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
