@@ -1,5 +1,5 @@
-const ASTROS_API = 'http://api.open-notify.org/astros.json';
-const ISS_POSITION_API = 'http://api.open-notify.org/iss-now.json';
+const ASTROS_API = 'https://api.open-notify.org/astros.json';
+const ISS_POSITION_API = 'https://api.open-notify.org/iss-now.json';
 const canvas = document.getElementById('globe');
 const ctx = canvas.getContext('2d');
 
