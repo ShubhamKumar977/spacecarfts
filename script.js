@@ -98,7 +98,6 @@ async function fetchAstronauts() {
     // Use fallback data immediately for demo
     astronautData = fallbackData;
     updateCount(fallbackData);
-    console.log('✓ Using demo astronaut data');
     
     // Try to fetch real data in background
     try {
@@ -114,10 +113,10 @@ async function fetchAstronauts() {
             const data = await response.json();
             astronautData = data;
             updateCount(data);
-            console.log('✓ Real astronaut data loaded');
+            console.log('✓ Live astronaut data loaded');
         }
     } catch (error) {
-        console.log('Continuing with demo data');
+        // Silently continue with demo data
     }
 }
 
@@ -156,7 +155,11 @@ async function fetchISSPosition() {
                     longitude: parseFloat(data.iss_position.longitude),
                     timestamp: data.timestamp
                 };
-                console.log('✓ Real ISS position loaded');
+                // Only log first successful fetch
+                if (!window.issDataLoaded) {
+                    console.log('✓ Live ISS tracking active');
+                    window.issDataLoaded = true;
+                }
             }
         }
     } catch (error) {
