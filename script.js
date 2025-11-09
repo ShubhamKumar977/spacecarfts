@@ -1,6 +1,5 @@
 const ASTROS_API = 'http://api.open-notify.org/astros.json';
 const ISS_POSITION_API = 'http://api.open-notify.org/iss-now.json';
-const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
 const canvas = document.getElementById('globe');
 const ctx = canvas.getContext('2d');
 
@@ -104,16 +103,18 @@ async function fetchAstronauts() {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000);
         
-        const response = await fetch(CORS_PROXY + encodeURIComponent(ASTROS_API), { 
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(ASTROS_API)}`;
+        const response = await fetch(proxyUrl, { 
             signal: controller.signal 
         });
         clearTimeout(timeoutId);
         
         if (response.ok) {
-            const data = await response.json();
+            const result = await response.json();
+            const data = JSON.parse(result.contents);
             astronautData = data;
             updateCount(data);
-            console.log('✓ Live astronaut data loaded');
+            console.log('✓ Live astronaut data loaded:', data.number, 'people in space');
         }
     } catch (error) {
         // Silently continue with demo data
@@ -142,13 +143,15 @@ async function fetchISSPosition() {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000);
         
-        const response = await fetch(CORS_PROXY + encodeURIComponent(ISS_POSITION_API), { 
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(ISS_POSITION_API)}`;
+        const response = await fetch(proxyUrl, { 
             signal: controller.signal 
         });
         clearTimeout(timeoutId);
         
         if (response.ok) {
-            const data = await response.json();
+            const result = await response.json();
+            const data = JSON.parse(result.contents);
             if (data.iss_position) {
                 spacecraftPositions['ISS'] = {
                     latitude: parseFloat(data.iss_position.latitude),
