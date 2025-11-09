@@ -1,5 +1,6 @@
-const ASTROS_API = 'https://api.open-notify.org/astros.json';
-const ISS_POSITION_API = 'https://api.open-notify.org/iss-now.json';
+const ASTROS_API = 'http://api.open-notify.org/astros.json';
+const ISS_POSITION_API = 'http://api.open-notify.org/iss-now.json';
+const CORS_PROXY = 'https://corsproxy.io/?';
 const canvas = document.getElementById('globe');
 const ctx = canvas.getContext('2d');
 
@@ -13,6 +14,21 @@ let rotation = 0;
 let isDragging = false;
 let lastMouseX = 0;
 let dragRotation = 0;
+let issOrbitAngle = 0;
+
+// Fallback data in case API is unavailable
+const fallbackData = {
+    number: 7,
+    people: [
+        { name: "Jasmin Moghbeli", craft: "ISS" },
+        { name: "Andreas Mogensen", craft: "ISS" },
+        { name: "Satoshi Furukawa", craft: "ISS" },
+        { name: "Konstantin Borisov", craft: "ISS" },
+        { name: "Oleg Kononenko", craft: "ISS" },
+        { name: "Nikolai Chub", craft: "ISS" },
+        { name: "Loral O'Hara", craft: "ISS" }
+    ]
+};
 
 // Spacecraft database with timeline information
 const spacecraftDatabase = {
@@ -77,23 +93,35 @@ canvas.addEventListener('click', (e) => {
     checkSpacecraftClick(x, y);
 });
 
-// Fetch astronaut data
+// Fetch astronaut data with fallback
 async function fetchAstronauts() {
     try {
-        const response = await fetch(ASTROS_API);
+        // Try direct API first
+        let response = await fetch(ASTROS_API, { mode: 'cors' });
+        if (!response.ok) {
+            // Try with CORS proxy
+            response = await fetch(CORS_PROXY + encodeURIComponent(ASTROS_API));
+        }
         const data = await response.json();
         astronautData = data;
         updateCount(data);
+        console.log('✓ Astronaut data loaded successfully');
     } catch (error) {
-        console.error('Error fetching astronaut data:', error);
-        document.getElementById('count').textContent = 'Error';
+        console.warn('Using fallback astronaut data:', error.message);
+        astronautData = fallbackData;
+        updateCount(fallbackData);
     }
 }
 
-// Fetch ISS position
+// Fetch ISS position with fallback to simulated orbit
 async function fetchISSPosition() {
     try {
-        const response = await fetch(ISS_POSITION_API);
+        // Try direct API first
+        let response = await fetch(ISS_POSITION_API, { mode: 'cors' });
+        if (!response.ok) {
+            // Try with CORS proxy
+            response = await fetch(CORS_PROXY + encodeURIComponent(ISS_POSITION_API));
+        }
         const data = await response.json();
         if (data.iss_position) {
             spacecraftPositions['ISS'] = {
@@ -101,9 +129,19 @@ async function fetchISSPosition() {
                 longitude: parseFloat(data.iss_position.longitude),
                 timestamp: data.timestamp
             };
+            console.log('✓ ISS position updated');
         }
     } catch (error) {
-        console.error('Error fetching ISS position:', error);
+        console.warn('Using simulated ISS orbit:', error.message);
+        // Simulate ISS orbit (51.6° inclination, moving west to east)
+        issOrbitAngle += 0.001;
+        const lat = 51.6 * Math.sin(issOrbitAngle * 3);
+        const lon = (issOrbitAngle * 180 / Math.PI * 10) % 360 - 180;
+        spacecraftPositions['ISS'] = {
+            latitude: lat,
+            longitude: lon,
+            timestamp: Date.now() / 1000
+        };
     }
 }
 
