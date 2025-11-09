@@ -285,51 +285,158 @@ function drawGlobe() {
     ctx.fillStyle = '#0a0e27';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Draw stars
-    for (let i = 0; i < 100; i++) {
-        const x = Math.random() * canvas.width;
-        const y = Math.random() * canvas.height;
-        const size = Math.random() * 2;
-        ctx.fillStyle = 'rgba(255, 255, 255, ' + (Math.random() * 0.5 + 0.5) + ')';
-        ctx.beginPath();
-        ctx.arc(x, y, size, 0, Math.PI * 2);
-        ctx.fill();
+    // Draw stars (static positions for consistency)
+    if (!window.stars) {
+        window.stars = [];
+        for (let i = 0; i < 200; i++) {
+            window.stars.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                size: Math.random() * 1.5 + 0.5,
+                brightness: Math.random() * 0.5 + 0.5,
+                twinkle: Math.random() * Math.PI * 2
+            });
+        }
     }
     
-    // Draw Earth shadow/glow
-    const gradient = ctx.createRadialGradient(centerX, centerY, earthRadius * 0.8, centerX, centerY, earthRadius * 1.3);
-    gradient.addColorStop(0, 'rgba(100, 181, 246, 0)');
-    gradient.addColorStop(1, 'rgba(100, 181, 246, 0.3)');
-    ctx.fillStyle = gradient;
+    window.stars.forEach((star, i) => {
+        const twinkle = Math.sin(Date.now() * 0.001 + star.twinkle) * 0.3 + 0.7;
+        ctx.fillStyle = `rgba(255, 255, 255, ${star.brightness * twinkle})`;
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Add some colored stars
+        if (i % 20 === 0) {
+            ctx.fillStyle = `rgba(100, 181, 246, ${star.brightness * twinkle * 0.5})`;
+            ctx.fill();
+        }
+    });
+    
+    // Draw Earth atmosphere glow
+    const atmosphereGradient = ctx.createRadialGradient(centerX, centerY, earthRadius, centerX, centerY, earthRadius * 1.15);
+    atmosphereGradient.addColorStop(0, 'rgba(100, 181, 246, 0.4)');
+    atmosphereGradient.addColorStop(0.5, 'rgba(100, 181, 246, 0.2)');
+    atmosphereGradient.addColorStop(1, 'rgba(100, 181, 246, 0)');
+    ctx.fillStyle = atmosphereGradient;
     ctx.beginPath();
-    ctx.arc(centerX, centerY, earthRadius * 1.3, 0, Math.PI * 2);
+    ctx.arc(centerX, centerY, earthRadius * 1.15, 0, Math.PI * 2);
     ctx.fill();
     
-    // Draw Earth
-    const earthGradient = ctx.createRadialGradient(
-        centerX - earthRadius * 0.3, 
-        centerY - earthRadius * 0.3, 
+    // Draw Earth base (ocean)
+    const oceanGradient = ctx.createRadialGradient(
+        centerX - earthRadius * 0.4, 
+        centerY - earthRadius * 0.4, 
         earthRadius * 0.1,
         centerX, 
         centerY, 
         earthRadius
     );
-    earthGradient.addColorStop(0, '#4fc3f7');
-    earthGradient.addColorStop(0.5, '#2196f3');
-    earthGradient.addColorStop(1, '#0d47a1');
+    oceanGradient.addColorStop(0, '#1e88e5');
+    oceanGradient.addColorStop(0.4, '#1565c0');
+    oceanGradient.addColorStop(0.7, '#0d47a1');
+    oceanGradient.addColorStop(1, '#01579b');
     
-    ctx.fillStyle = earthGradient;
+    ctx.fillStyle = oceanGradient;
     ctx.beginPath();
     ctx.arc(centerX, centerY, earthRadius, 0, Math.PI * 2);
     ctx.fill();
     
-    // Draw continents (simplified)
-    ctx.fillStyle = '#1b5e20';
-    ctx.globalAlpha = 0.6;
+    // Draw continents with more detail
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate(rotation + dragRotation);
+    ctx.translate(-centerX, -centerY);
     
-    drawContinent(centerX - 50, centerY - 30, 40, 50, rotation + dragRotation);
-    drawContinent(centerX + 20, centerY + 10, 50, 40, rotation + dragRotation);
-    drawContinent(centerX - 30, centerY + 40, 35, 30, rotation + dragRotation);
+    // Africa
+    ctx.fillStyle = '#2e7d32';
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath();
+    ctx.ellipse(centerX + 10, centerY - 20, 35, 45, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Europe
+    ctx.beginPath();
+    ctx.ellipse(centerX + 5, centerY - 60, 25, 20, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Asia
+    ctx.beginPath();
+    ctx.ellipse(centerX + 60, centerY - 30, 50, 40, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // North America
+    ctx.beginPath();
+    ctx.ellipse(centerX - 70, centerY - 40, 40, 50, 0.1, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // South America
+    ctx.beginPath();
+    ctx.ellipse(centerX - 60, centerY + 30, 25, 40, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Australia
+    ctx.beginPath();
+    ctx.ellipse(centerX + 90, centerY + 40, 25, 20, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Add mountain ranges (darker green)
+    ctx.fillStyle = '#1b5e20';
+    ctx.globalAlpha = 0.5;
+    ctx.beginPath();
+    ctx.ellipse(centerX - 70, centerY - 30, 15, 8, 0.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(centerX + 50, centerY - 20, 20, 10, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.restore();
+    
+    // Add polar ice caps
+    ctx.fillStyle = '#e3f2fd';
+    ctx.globalAlpha = 0.7;
+    ctx.beginPath();
+    ctx.ellipse(centerX, centerY - earthRadius + 15, earthRadius * 0.6, 20, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(centerX, centerY + earthRadius - 15, earthRadius * 0.6, 20, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Add clouds
+    ctx.fillStyle = '#ffffff';
+    ctx.globalAlpha = 0.15;
+    const cloudRotation = (rotation + dragRotation) * 1.5;
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate(cloudRotation);
+    ctx.translate(-centerX, -centerY);
+    
+    for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        const dist = earthRadius * 0.7;
+        const x = centerX + Math.cos(angle) * dist;
+        const y = centerY + Math.sin(angle) * dist * 0.5;
+        ctx.beginPath();
+        ctx.ellipse(x, y, 30, 15, angle, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    ctx.restore();
+    
+    // Add terminator (day/night) shadow
+    const terminatorGradient = ctx.createLinearGradient(
+        centerX - earthRadius, centerY,
+        centerX + earthRadius, centerY
+    );
+    terminatorGradient.addColorStop(0, 'rgba(0, 0, 0, 0.5)');
+    terminatorGradient.addColorStop(0.3, 'rgba(0, 0, 0, 0.2)');
+    terminatorGradient.addColorStop(0.5, 'rgba(0, 0, 0, 0)');
+    terminatorGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    
+    ctx.fillStyle = terminatorGradient;
+    ctx.globalAlpha = 0.6;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, earthRadius, 0, Math.PI * 2);
+    ctx.fill();
     
     ctx.globalAlpha = 1;
     
@@ -402,18 +509,7 @@ function drawGlobe() {
     }
 }
 
-function drawContinent(x, y, width, height, rotation) {
-    ctx.save();
-    ctx.translate(canvas.width / 2, canvas.height / 2);
-    ctx.rotate(rotation);
-    ctx.translate(-canvas.width / 2, -canvas.height / 2);
-    
-    ctx.beginPath();
-    ctx.ellipse(x, y, width, height, 0, 0, Math.PI * 2);
-    ctx.fill();
-    
-    ctx.restore();
-}
+
 
 function drawSpacecraft(x, y, angle) {
     ctx.save();
