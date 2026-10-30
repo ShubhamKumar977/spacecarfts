@@ -12,27 +12,32 @@
     <main class="page-shell">
         <header class="topbar">
             <a class="brand" href="./" aria-label="Earth-Moon Observatory home"><span class="brand-mark" aria-hidden="true">◉</span><span>ORBITAL <strong>OBSERVATORY</strong></span></a>
-            <span class="live-status"><span class="status-dot"></span> SOLAR SYSTEM / EARTH</span>
+            <span class="live-status"><span class="status-dot"></span> UTC <time id="utc-clock"></time></span>
         </header>
         <section class="intro">
             <div class="eyebrow">A closer look at our nearest neighbor</div>
             <h1>One planet.<br><span>One remarkable distance.</span></h1>
-            <p>Watch the Moon move through its orbit and see how far away it is—then step through time to explore the journey.</p>
+            <p>Rotate our living planet, pick a place on its surface, and see the Moon’s local sky position. Follow the present or scrub one year into the past and future.</p>
         </section>
         <section class="explorer" aria-label="Earth and Moon orbital explorer">
             <div class="scene-card">
-                <div class="scene-heading"><div><span class="eyebrow">EARTH–MOON SYSTEM</span><h2>Orbital view</h2></div><span class="model-badge"><span class="status-dot"></span> ORBIT MODEL</span></div>
+                <div class="scene-heading"><div><span class="eyebrow">EARTH–MOON SYSTEM</span><h2>Orbital view</h2></div><span class="model-badge"><span class="status-dot"></span> LIVE SKY MODEL</span></div>
                 <div class="scene-wrap">
-                    <canvas id="globe" aria-label="Animated diagram of Earth, the Moon, and their orbit. Drag to rotate Earth."></canvas>
-                    <div class="scene-caption"><span><i class="legend-earth"></i> Earth</span><span><i class="legend-moon"></i> Moon</span><span><i class="legend-orbit"></i> Lunar orbit</span></div>
+                    <canvas id="globe" role="application" tabindex="0" aria-label="Interactive globe. Drag to rotate Earth; click a point on the visible map to see the Moon from there."></canvas>
+                    <div class="scene-caption"><span><i class="legend-earth"></i> Earth</span><span><i class="legend-moon"></i> Moon</span><span><i class="legend-orbit"></i> Orbit</span><span><i class="legend-satellite"></i> Satellite</span></div>
                 </div>
-                <div class="scene-footer"><span><span class="status-dot"></span> DISTANCE MODEL · NOT LIVE TELEMETRY</span><span>Orbit diagram is schematic · drag to rotate Earth</span></div>
+                <div class="scene-footer"><span><span class="status-dot"></span> <span id="telemetry-status">SATELLITE TELEMETRY · CONNECTING</span></span><span>Drag to rotate · click a location</span></div>
             </div>
             <aside class="control-card" aria-label="Moon distance and time controls">
-                <div class="date-block"><span class="eyebrow">SELECTED DATE · UTC</span><time id="selected-date"></time><span class="date-context" id="date-context">Today</span></div>
+                <div class="date-block"><span class="eyebrow">SKY TIME · UTC</span><time id="selected-date"></time><span class="date-context" id="date-context">Live · updating now</span></div>
                 <div class="distance-block"><span class="eyebrow">EARTH–MOON DISTANCE</span><div class="distance-value"><span id="distance">384,400</span><span class="unit">km</span></div><div class="distance-scale" aria-hidden="true"><span id="distance-marker"></span></div><div class="scale-labels"><span>Perigee · 363,300 km</span><span>Apogee · 405,500 km</span></div><p class="distance-note" id="distance-note">Average distance · about 30 Earth diameters</p></div>
                 <div class="phase-row"><span class="phase-icon" id="phase-icon" aria-hidden="true">◐</span><div><span class="eyebrow">LUNAR PHASE</span><strong id="phase-name">Waxing crescent</strong></div><span class="illumination" id="illumination">0% lit</span></div>
-                <div class="time-controls"><div class="control-title"><label for="time-slider">TRAVEL THROUGH TIME</label><button class="today-button" id="today-button" type="button">RESET TO TODAY</button></div><div class="time-buttons"><button id="back-button" type="button" aria-label="Go back one day">− 1 DAY</button><button id="forward-button" type="button" aria-label="Go forward one day">+ 1 DAY</button></div><input id="time-slider" type="range" min="-365" max="365" step="1" value="0" aria-label="Select a date up to one year in the past or future"><div class="range-labels"><span>1 YEAR AGO</span><span id="offset-label">TODAY</span><span>1 YEAR AHEAD</span></div><p class="control-hint">Choose any day within a year before or after today.</p></div>
+                <div class="local-sky">
+                    <div class="local-moon"><canvas id="moon-phase" width="72" height="72" aria-label="Moon phase as seen from selected location"></canvas></div>
+                    <div class="local-sky-copy"><span class="eyebrow">MOON FROM THIS LOCATION</span><strong id="location-name">Greenwich, United Kingdom</strong><span id="location-coordinates">51.48° N, 0.00° E</span><span id="moon-altitude">Altitude —</span></div>
+                    <span class="moon-horizon" id="moon-visibility">—</span>
+                </div>
+                <div class="time-controls"><div class="control-title"><label for="time-slider">TRAVEL THROUGH TIME</label><button class="today-button" id="today-button" type="button">GO LIVE</button></div><div class="time-buttons"><button id="back-button" type="button" aria-label="Go back one day">− 1 DAY</button><button id="forward-button" type="button" aria-label="Go forward one day">+ 1 DAY</button></div><input id="time-slider" type="range" min="-365" max="365" step="1" value="0" aria-label="Select a date up to one year in the past or future"><div class="range-labels"><span>1 YEAR AGO</span><span id="offset-label">LIVE</span><span>1 YEAR AHEAD</span></div><p class="control-hint">Scrub to pause on a past or future date. Select “Return to Live” to resume UTC.</p></div>
             </aside>
         </section>
         <section class="lower-grid">
