@@ -1,43 +1,44 @@
-const ASTROS_API = 'http://api.open-notify.org/astros.json';
-const ISS_POSITION_API = 'http://api.open-notify.org/iss-now.json';
 const canvas = document.getElementById('globe');
 const ctx = canvas.getContext('2d');
 
-// Set canvas size
-canvas.width = 600;
-canvas.height = 600;
-
-let astronautData = null;
-let spacecraftPositions = {};
+const MEAN_DISTANCE = 384400;
+const ECCENTRICITY = 0.0549;
+const ANOMALISTIC_MONTH = 27.55455;
+const SYNODIC_MONTH = 29.530588853;
+const J2000 = Date.UTC(2000, 0, 1, 12);
+const KNOWN_NEW_MOON = Date.UTC(2000, 0, 6, 18, 14);
+const today = new Date();
+today.setUTCHours(12, 0, 0, 0);
+let selectedDate = new Date(today);
 let rotation = 0;
-let isDragging = false;
-let lastMouseX = 0;
 let dragRotation = 0;
-let issOrbitAngle = 0;
+let isDragging = false;
+let lastPointerX = 0;
+let sceneWidth = 0;
+let sceneHeight = 0;
+let stars = [];
 
-// Current astronaut data (updated November 2025)
 const fallbackData = {
     number: 13,
     people: [
-        { name: "Oleg Kononenko", craft: "ISS" },
-        { name: "Nikolai Chub", craft: "ISS" },
-        { name: "Tracy Caldwell Dyson", craft: "ISS" },
-        { name: "Matthew Dominick", craft: "ISS" },
-        { name: "Michael Barratt", craft: "ISS" },
-        { name: "Jeanette Epps", craft: "ISS" },
-        { name: "Alexander Grebenkin", craft: "ISS" },
-        { name: "Butch Wilmore", craft: "ISS" },
-        { name: "Sunita Williams", craft: "ISS" },
-        { name: "Don Pettit", craft: "ISS" },
-        { name: "Li Cong", craft: "Tiangong" },
-        { name: "Li Guangsu", craft: "Tiangong" },
-        { name: "Ye Guangfu", craft: "Tiangong" }
+        { name: 'Oleg Kononenko', craft: 'ISS' },
+        { name: 'Nikolai Chub', craft: 'ISS' },
+        { name: 'Tracy Caldwell Dyson', craft: 'ISS' },
+        { name: 'Matthew Dominick', craft: 'ISS' },
+        { name: 'Michael Barratt', craft: 'ISS' },
+        { name: 'Jeanette Epps', craft: 'ISS' },
+        { name: 'Alexander Grebenkin', craft: 'ISS' },
+        { name: 'Butch Wilmore', craft: 'ISS' },
+        { name: 'Sunita Williams', craft: 'ISS' },
+        { name: 'Don Pettit', craft: 'ISS' },
+        { name: 'Li Cong', craft: 'Tiangong' },
+        { name: 'Li Guangsu', craft: 'Tiangong' },
+        { name: 'Ye Guangfu', craft: 'Tiangong' }
     ]
 };
 
-// Spacecraft database with timeline information
 const spacecraftDatabase = {
-    'ISS': {
+    ISS: {
         fullName: 'International Space Station',
         launched: '1998-11-20',
         timeline: [
@@ -50,7 +51,7 @@ const spacecraftDatabase = {
         orbit: 'Low Earth Orbit (~420 km altitude)',
         speed: '~7.66 km/s (27,600 km/h)'
     },
-    'Tiangong': {
+    Tiangong: {
         fullName: 'Tiangong Space Station',
         launched: '2021-04-29',
         timeline: [
@@ -64,531 +65,335 @@ const spacecraftDatabase = {
     }
 };
 
-// Mouse interaction for rotation
-canvas.addEventListener('mousedown', (e) => {
-    isDragging = true;
-    lastMouseX = e.clientX;
-    canvas.style.cursor = 'grabbing';
-});
-
-canvas.addEventListener('mousemove', (e) => {
-    if (isDragging) {
-        const deltaX = e.clientX - lastMouseX;
-        dragRotation += deltaX * 0.01;
-        lastMouseX = e.clientX;
-    }
-});
-
-canvas.addEventListener('mouseup', () => {
-    isDragging = false;
-    canvas.style.cursor = 'grab';
-});
-
-canvas.addEventListener('mouseleave', () => {
-    isDragging = false;
-    canvas.style.cursor = 'grab';
-});
-
-// Click detection for spacecraft
-canvas.addEventListener('click', (e) => {
+function resizeCanvas() {
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    checkSpacecraftClick(x, y);
-});
-
-// Load astronaut data
-async function fetchAstronauts() {
-    // Use current astronaut data
-    astronautData = fallbackData;
-    updateCount(fallbackData);
-    console.log('✓ Loaded current astronaut data:', fallbackData.number, 'people in space');
+    const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+    sceneWidth = rect.width;
+    sceneHeight = rect.height;
+    canvas.width = Math.round(rect.width * pixelRatio);
+    canvas.height = Math.round(rect.height * pixelRatio);
+    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    stars = Array.from({ length: Math.max(70, Math.round(rect.width / 3)) }, () => ({
+        x: Math.random() * sceneWidth,
+        y: Math.random() * sceneHeight,
+        size: Math.random() * 1.3 + 0.35,
+        alpha: Math.random() * 0.45 + 0.15,
+        phase: Math.random() * Math.PI * 2
+    }));
 }
 
-// Simulate ISS orbit continuously
-function updateISSPosition() {
-    issOrbitAngle += 0.001;
-    const lat = 51.6 * Math.sin(issOrbitAngle * 3);
-    const lon = (issOrbitAngle * 180 / Math.PI * 10) % 360 - 180;
-    spacecraftPositions['ISS'] = {
-        latitude: lat,
-        longitude: lon,
-        timestamp: Date.now() / 1000
-    };
+function daysFromJ2000(date) {
+    return (date.getTime() - J2000) / 86400000;
 }
 
-// Simulate Tiangong orbit continuously (42.7° inclination)
-function updateTiangongPosition() {
-    issOrbitAngle += 0.001;
-    const lat = 42.7 * Math.sin(issOrbitAngle * 2.8 + 1.5); // Slightly different phase
-    const lon = ((issOrbitAngle * 180 / Math.PI * 10) + 45) % 360 - 180; // Offset from ISS
-    spacecraftPositions['Tiangong'] = {
-        latitude: lat,
-        longitude: lon,
-        timestamp: Date.now() / 1000
-    };
+function getOrbitalState(date) {
+    const days = daysFromJ2000(date);
+    const meanAnomaly = ((days / ANOMALISTIC_MONTH) * Math.PI * 2) % (Math.PI * 2);
+    const trueAnomaly = meanAnomaly + 2 * ECCENTRICITY * Math.sin(meanAnomaly);
+    const semiMajorAxis = MEAN_DISTANCE;
+    const distance = semiMajorAxis * (1 - ECCENTRICITY * ECCENTRICITY) / (1 + ECCENTRICITY * Math.cos(trueAnomaly));
+    const phaseAge = ((date.getTime() - KNOWN_NEW_MOON) / 86400000 % SYNODIC_MONTH + SYNODIC_MONTH) % SYNODIC_MONTH;
+    const phase = phaseAge / SYNODIC_MONTH;
+    const illumination = (1 - Math.cos(phase * Math.PI * 2)) / 2;
+    const phaseNames = [
+        'New moon', 'Waxing crescent', 'First quarter', 'Waxing gibbous',
+        'Full moon', 'Waning gibbous', 'Last quarter', 'Waning crescent'
+    ];
+    const phaseName = phaseNames[Math.floor((phase * 8 + 0.5) % 8)];
+    return { distance, angle: trueAnomaly, phase, illumination, phaseName };
 }
 
-// Update spacecraft positions with realistic orbit simulation
-async function fetchISSPosition() {
-    updateISSPosition();
-    updateTiangongPosition();
-    console.log('✓ ISS and Tiangong orbit simulation active');
+function formatUTCDate(date) {
+    return new Intl.DateTimeFormat('en', {
+        weekday: 'short', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC'
+    }).format(date);
 }
 
-// Update count display
-function updateCount(data) {
-    document.getElementById('count').textContent = data.number;
+function updateExplorer() {
+    const state = getOrbitalState(selectedDate);
+    const dayOffset = Math.round((selectedDate - today) / 86400000);
+    document.getElementById('selected-date').textContent = formatUTCDate(selectedDate);
+    document.getElementById('distance').textContent = Math.round(state.distance).toLocaleString('en-US');
+    document.getElementById('phase-name').textContent = state.phaseName;
+    document.getElementById('illumination').textContent = `${Math.round(state.illumination * 100)}% lit`;
+    document.getElementById('phase-icon').textContent = state.phaseName === 'Full moon' ? '●' :
+        state.phaseName === 'New moon' ? '○' : state.phaseName.includes('Waxing') ? '◔' : '◑';
+    const context = dayOffset === 0 ? 'Today' : `${Math.abs(dayOffset)} day${Math.abs(dayOffset) === 1 ? '' : 's'} ${dayOffset < 0 ? 'in the past' : 'in the future'}`;
+    document.getElementById('date-context').textContent = context;
+    document.getElementById('offset-label').textContent = dayOffset === 0 ? 'TODAY' : `${dayOffset > 0 ? '+' : ''}${dayOffset} DAYS`;
+    document.getElementById('time-slider').value = dayOffset;
+    const rangeProgress = Math.max(0, Math.min(1, (state.distance - 363300) / (405500 - 363300)));
+    document.getElementById('distance-marker').style.left = `${rangeProgress * 100}%`;
+    const distanceNote = state.distance < 370000 ? 'Near perigee · the Moon is closer than usual' :
+        state.distance > 399000 ? 'Near apogee · the Moon is farther than usual' :
+            'About 30 Earth diameters from our planet';
+    document.getElementById('distance-note').textContent = distanceNote;
 }
 
-// Convert lat/lon to 3D coordinates on sphere
-function latLonToXY(lat, lon, radius, rotation) {
-    const phi = (90 - lat) * (Math.PI / 180);
-    const theta = (lon + rotation * (180 / Math.PI)) * (Math.PI / 180);
-    
-    const x = radius * Math.sin(phi) * Math.cos(theta);
-    const z = radius * Math.sin(phi) * Math.sin(theta);
-    const y = radius * Math.cos(phi);
-    
-    return { x, y, z };
+function setSelectedDate(offset) {
+    const boundedOffset = Math.max(-365, Math.min(365, offset));
+    selectedDate = new Date(today.getTime() + boundedOffset * 86400000);
+    updateExplorer();
 }
 
-// Check if spacecraft was clicked
-function checkSpacecraftClick(mouseX, mouseY) {
-    if (!astronautData) return;
-    
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-    const earthRadius = 150;
-    const orbitRadius = earthRadius + 60;
-    
-    const craftGroups = {};
-    astronautData.people.forEach(person => {
-        if (!craftGroups[person.craft]) {
-            craftGroups[person.craft] = [];
-        }
-        craftGroups[person.craft].push(person.name);
-    });
-    
-    Object.keys(craftGroups).forEach(craftName => {
-        let x, y;
-        
-        if (spacecraftPositions[craftName]) {
-            const pos = spacecraftPositions[craftName];
-            const coords = latLonToXY(pos.latitude, pos.longitude, orbitRadius, rotation + dragRotation);
-            
-            // Only show if on visible side
-            if (coords.z > 0) {
-                x = centerX + coords.x;
-                y = centerY - coords.y;
-            } else {
-                return; // Skip if on back side
-            }
-        } else {
-            // Fallback to orbital position
-            const craftIndex = Object.keys(craftGroups).indexOf(craftName);
-            const angle = (craftIndex * (Math.PI * 2) / Object.keys(craftGroups).length) + rotation + dragRotation;
-            x = centerX + Math.cos(angle) * orbitRadius;
-            y = centerY + Math.sin(angle) * orbitRadius;
-        }
-        
-        const distance = Math.sqrt((mouseX - x) ** 2 + (mouseY - y) ** 2);
-        if (distance < 20) {
-            showSpacecraftDetails(craftName, craftGroups[craftName]);
-        }
-    });
+function setDateFromOffset(offset) {
+    setSelectedDate(Number(offset));
 }
 
-// Show spacecraft details in modal
-function showSpacecraftDetails(craftName, astronauts) {
-    const modal = document.getElementById('modal');
-    const title = document.getElementById('modal-title');
-    const body = document.getElementById('modal-body');
-    
-    const craftInfo = spacecraftDatabase[craftName] || {
-        fullName: craftName,
-        launched: 'Unknown',
-        timeline: [],
-        orbit: 'Unknown',
-        speed: 'Unknown'
-    };
-    
-    title.textContent = craftInfo.fullName;
-    
-    let html = '';
-    
-    // Position information
-    if (spacecraftPositions[craftName]) {
-        const pos = spacecraftPositions[craftName];
-        html += `
-            <div class="position-info">
-                <h3>Current Position</h3>
-                <p><span class="position-label">Latitude:</span> ${pos.latitude.toFixed(4)}°</p>
-                <p><span class="position-label">Longitude:</span> ${pos.longitude.toFixed(4)}°</p>
-                <p><span class="position-label">Orbit:</span> ${craftInfo.orbit}</p>
-                <p><span class="position-label">Speed:</span> ${craftInfo.speed}</p>
-            </div>
-        `;
-    }
-    
-    // Astronauts section
-    html += `
-        <div class="astronaut-section">
-            <h3>👨‍🚀 Current Crew (${astronauts.length})</h3>
-    `;
-    
-    astronauts.forEach(name => {
-        const wikiUrl = getWikipediaUrl(name);
-        html += `<div class="astronaut-item astronaut-link" onclick="window.open('${wikiUrl}', '_blank')">${name}</div>`;
-    });
-    
-    html += '</div>';
-    
-    // Timeline section
-    if (craftInfo.timeline.length > 0) {
-        html += `
-            <div class="timeline">
-                <h3>📅 Mission Timeline</h3>
-        `;
-        
-        craftInfo.timeline.forEach(item => {
-            const clickable = item.url ? `class="timeline-link" onclick="window.open('${item.url}', '_blank')"` : '';
-            html += `
-                <div class="timeline-item" ${clickable}>
-                    <div class="timeline-date">${item.date}</div>
-                    <div class="timeline-event">${item.event}</div>
-                </div>
-            `;
-        });
-        
-        html += '</div>';
-    }
-    
-    body.innerHTML = html;
-    modal.style.display = 'block';
-}
+document.getElementById('time-slider').addEventListener('input', event => setDateFromOffset(event.target.value));
+document.getElementById('back-button').addEventListener('click', () => setSelectedDate(Number(document.getElementById('time-slider').value) - 1));
+document.getElementById('forward-button').addEventListener('click', () => setSelectedDate(Number(document.getElementById('time-slider').value) + 1));
+document.getElementById('today-button').addEventListener('click', () => setSelectedDate(0));
+document.getElementById('count').textContent = fallbackData.number;
 
-// Generate Wikipedia URL for astronaut
-function getWikipediaUrl(name) {
-    // Convert name to Wikipedia format (replace spaces with underscores)
-    const formattedName = name.replace(/ /g, '_');
-    return `https://en.wikipedia.org/wiki/${formattedName}`;
-}
-
-// Close modal
-document.querySelector('.close').addEventListener('click', () => {
-    document.getElementById('modal').style.display = 'none';
-});
-
-window.addEventListener('click', (e) => {
-    const modal = document.getElementById('modal');
-    if (e.target === modal) {
-        modal.style.display = 'none';
-    }
-});
-
-// Draw the Earth and spacecraft
-function drawGlobe() {
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-    const earthRadius = 150;
-    
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw space background with stars
-    ctx.fillStyle = '#0a0e27';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw stars (static positions for consistency)
-    if (!window.stars) {
-        window.stars = [];
-        for (let i = 0; i < 200; i++) {
-            window.stars.push({
-                x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height,
-                size: Math.random() * 1.5 + 0.5,
-                brightness: Math.random() * 0.5 + 0.5,
-                twinkle: Math.random() * Math.PI * 2
-            });
-        }
-    }
-    
-    window.stars.forEach((star, i) => {
-        const twinkle = Math.sin(Date.now() * 0.001 + star.twinkle) * 0.3 + 0.7;
-        ctx.fillStyle = `rgba(255, 255, 255, ${star.brightness * twinkle})`;
-        ctx.beginPath();
-        ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Add some colored stars
-        if (i % 20 === 0) {
-            ctx.fillStyle = `rgba(100, 181, 246, ${star.brightness * twinkle * 0.5})`;
-            ctx.fill();
-        }
-    });
-    
-    // Draw Earth atmosphere glow
-    const atmosphereGradient = ctx.createRadialGradient(centerX, centerY, earthRadius, centerX, centerY, earthRadius * 1.15);
-    atmosphereGradient.addColorStop(0, 'rgba(100, 181, 246, 0.4)');
-    atmosphereGradient.addColorStop(0.5, 'rgba(100, 181, 246, 0.2)');
-    atmosphereGradient.addColorStop(1, 'rgba(100, 181, 246, 0)');
-    ctx.fillStyle = atmosphereGradient;
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, earthRadius * 1.15, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Draw Earth base (ocean)
-    const oceanGradient = ctx.createRadialGradient(
-        centerX - earthRadius * 0.4, 
-        centerY - earthRadius * 0.4, 
-        earthRadius * 0.1,
-        centerX, 
-        centerY, 
-        earthRadius
-    );
-    oceanGradient.addColorStop(0, '#1e88e5');
-    oceanGradient.addColorStop(0.4, '#1565c0');
-    oceanGradient.addColorStop(0.7, '#0d47a1');
-    oceanGradient.addColorStop(1, '#01579b');
-    
-    ctx.fillStyle = oceanGradient;
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, earthRadius, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Draw continents with more detail
-    ctx.save();
-    ctx.translate(centerX, centerY);
-    ctx.rotate(rotation + dragRotation);
-    ctx.translate(-centerX, -centerY);
-    
-    // Africa
-    ctx.fillStyle = '#2e7d32';
-    ctx.globalAlpha = 0.85;
-    ctx.beginPath();
-    ctx.ellipse(centerX + 10, centerY - 20, 35, 45, 0.2, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Europe
-    ctx.beginPath();
-    ctx.ellipse(centerX + 5, centerY - 60, 25, 20, 0, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Asia
-    ctx.beginPath();
-    ctx.ellipse(centerX + 60, centerY - 30, 50, 40, -0.3, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // North America
-    ctx.beginPath();
-    ctx.ellipse(centerX - 70, centerY - 40, 40, 50, 0.1, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // South America
-    ctx.beginPath();
-    ctx.ellipse(centerX - 60, centerY + 30, 25, 40, 0.2, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Australia
-    ctx.beginPath();
-    ctx.ellipse(centerX + 90, centerY + 40, 25, 20, 0, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Add mountain ranges (darker green)
-    ctx.fillStyle = '#1b5e20';
-    ctx.globalAlpha = 0.5;
-    ctx.beginPath();
-    ctx.ellipse(centerX - 70, centerY - 30, 15, 8, 0.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.ellipse(centerX + 50, centerY - 20, 20, 10, -0.2, 0, Math.PI * 2);
-    ctx.fill();
-    
-    ctx.restore();
-    
-    // Add polar ice caps
-    ctx.fillStyle = '#e3f2fd';
-    ctx.globalAlpha = 0.7;
-    ctx.beginPath();
-    ctx.ellipse(centerX, centerY - earthRadius + 15, earthRadius * 0.6, 20, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.ellipse(centerX, centerY + earthRadius - 15, earthRadius * 0.6, 20, 0, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Add clouds
-    ctx.fillStyle = '#ffffff';
-    ctx.globalAlpha = 0.15;
-    const cloudRotation = (rotation + dragRotation) * 1.5;
-    ctx.save();
-    ctx.translate(centerX, centerY);
-    ctx.rotate(cloudRotation);
-    ctx.translate(-centerX, -centerY);
-    
-    for (let i = 0; i < 8; i++) {
-        const angle = (i / 8) * Math.PI * 2;
-        const dist = earthRadius * 0.7;
-        const x = centerX + Math.cos(angle) * dist;
-        const y = centerY + Math.sin(angle) * dist * 0.5;
-        ctx.beginPath();
-        ctx.ellipse(x, y, 30, 15, angle, 0, Math.PI * 2);
-        ctx.fill();
-    }
-    ctx.restore();
-    
-    // Add terminator (day/night) shadow
-    const terminatorGradient = ctx.createLinearGradient(
-        centerX - earthRadius, centerY,
-        centerX + earthRadius, centerY
-    );
-    terminatorGradient.addColorStop(0, 'rgba(0, 0, 0, 0.5)');
-    terminatorGradient.addColorStop(0.3, 'rgba(0, 0, 0, 0.2)');
-    terminatorGradient.addColorStop(0.5, 'rgba(0, 0, 0, 0)');
-    terminatorGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    
-    ctx.fillStyle = terminatorGradient;
-    ctx.globalAlpha = 0.6;
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, earthRadius, 0, Math.PI * 2);
-    ctx.fill();
-    
-    ctx.globalAlpha = 1;
-    
-    // Draw spacecraft if data is available
-    if (astronautData) {
-        const orbitRadius = earthRadius + 60;
-        
-        const craftGroups = {};
-        astronautData.people.forEach(person => {
-            if (!craftGroups[person.craft]) {
-                craftGroups[person.craft] = [];
-            }
-            craftGroups[person.craft].push(person.name);
-        });
-        
-        Object.keys(craftGroups).forEach((craftName, index) => {
-            let x, y, isVisible = true;
-            
-            // Use real position if available
-            if (spacecraftPositions[craftName]) {
-                const pos = spacecraftPositions[craftName];
-                const coords = latLonToXY(pos.latitude, pos.longitude, orbitRadius, rotation + dragRotation);
-                
-                // Only show if on visible side (z > 0)
-                if (coords.z > 0) {
-                    x = centerX + coords.x;
-                    y = centerY - coords.y;
-                } else {
-                    isVisible = false;
-                }
-            } else {
-                // Fallback to simple orbital position
-                const angle = (index * (Math.PI * 2) / Object.keys(craftGroups).length) + rotation + dragRotation;
-                x = centerX + Math.cos(angle) * orbitRadius;
-                y = centerY + Math.sin(angle) * orbitRadius;
-            }
-            
-            if (isVisible) {
-                // Draw orbit path
-                ctx.strokeStyle = 'rgba(100, 181, 246, 0.2)';
-                ctx.lineWidth = 1;
-                ctx.setLineDash([5, 5]);
-                ctx.beginPath();
-                ctx.arc(centerX, centerY, orbitRadius, 0, Math.PI * 2);
-                ctx.stroke();
-                ctx.setLineDash([]);
-                
-                // Draw spacecraft
-                drawSpacecraft(x, y, 0);
-                
-                // Draw label
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 13px Arial';
-                ctx.textAlign = 'center';
-                ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-                ctx.shadowBlur = 4;
-                ctx.fillText(craftName, x, y + 30);
-                ctx.shadowBlur = 0;
-                
-                // Draw crew count
-                ctx.font = '11px Arial';
-                ctx.fillStyle = '#ffd54f';
-                ctx.fillText(`${craftGroups[craftName].length} crew`, x, y + 45);
-            }
-        });
-    }
-    
-    if (!isDragging) {
-        rotation += 0.002;
-    }
-}
-
-
-
-function drawSpacecraft(x, y, angle) {
+function drawEarth(x, y, radius, angle) {
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angle);
-    
-    // Glow effect
-    ctx.shadowColor = '#ffd54f';
-    ctx.shadowBlur = 15;
-    
-    // Spacecraft body
-    ctx.fillStyle = '#ffd54f';
+    const ocean = ctx.createRadialGradient(-radius * .35, -radius * .42, radius * .03, 0, 0, radius);
+    ocean.addColorStop(0, '#67cbff');
+    ocean.addColorStop(.34, '#267ac9');
+    ocean.addColorStop(1, '#102c67');
+    ctx.fillStyle = ocean;
     ctx.beginPath();
-    ctx.arc(0, 0, 10, 0, Math.PI * 2);
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
     ctx.fill();
-    
-    ctx.shadowBlur = 0;
-    
-    // Solar panels
-    ctx.fillStyle = '#1976d2';
-    ctx.fillRect(-18, -4, 12, 8);
-    ctx.fillRect(6, -4, 12, 8);
-    
-    // Panel details
-    ctx.strokeStyle = '#0d47a1';
-    ctx.lineWidth = 1;
+
+    ctx.save();
     ctx.beginPath();
-    ctx.moveTo(-12, -4);
-    ctx.lineTo(-12, 4);
-    ctx.moveTo(12, -4);
-    ctx.lineTo(12, 4);
+    ctx.arc(0, 0, radius * .99, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.fillStyle = '#45bb95';
+    const continents = [
+        [-.37, -.22, .21, .29, -.4], [-.24, .20, .10, .28, -.16],
+        [.04, -.35, .10, .09, .2], [.20, -.22, .31, .22, -.08],
+        [.40, .14, .16, .11, -.16], [-.43, -.60, .24, .10, 0]
+    ];
+    continents.forEach(([cx, cy, w, h, rotation]) => {
+        ctx.save();
+        ctx.translate(cx * radius, cy * radius);
+        ctx.rotate(rotation);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, w * radius, h * radius, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    });
+    ctx.fillStyle = 'rgba(255,255,255,.16)';
+    for (let i = 0; i < 9; i++) {
+        const cloudAngle = i * 2.4 + .4;
+        const cloudRadius = radius * (.26 + (i % 3) * .17);
+        ctx.beginPath();
+        ctx.ellipse(Math.cos(cloudAngle) * cloudRadius, Math.sin(cloudAngle) * cloudRadius * .72,
+            radius * .15, radius * .045, cloudAngle, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    ctx.restore();
+
+    ctx.strokeStyle = 'rgba(136,213,255,.75)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius + 1, -1.15, 1.05);
     ctx.stroke();
-    
-    // Antenna
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(0, -10);
-    ctx.lineTo(0, -18);
-    ctx.stroke();
-    
-    // Antenna tip
-    ctx.fillStyle = '#ff5252';
-    ctx.beginPath();
-    ctx.arc(0, -18, 2, 0, Math.PI * 2);
-    ctx.fill();
-    
     ctx.restore();
 }
 
-// Animation loop
-function animate() {
-    drawGlobe();
-    requestAnimationFrame(animate);
+function drawScene(timestamp) {
+    if (!sceneWidth || !sceneHeight) return;
+    const width = sceneWidth;
+    const height = sceneHeight;
+    const centerX = width * .46;
+    const centerY = height * .48;
+    const scale = Math.min(width / 680, height / 420, 1.25);
+    const earthRadius = Math.min(width * .18, height * .31, 120) * (width < 560 ? .9 : 1);
+    const orbitRadiusX = Math.min(width * .39, height * .58, 245);
+    const orbitRadiusY = Math.min(height * .34, width * .25, 140);
+    const orbital = getOrbitalState(selectedDate);
+    const orbitAngle = orbital.angle - Math.PI / 2;
+    const moonX = centerX + Math.cos(orbitAngle) * orbitRadiusX;
+    const moonY = centerY + Math.sin(orbitAngle) * orbitRadiusY;
+    const moonRadius = Math.max(6, earthRadius * .105);
+
+    ctx.clearRect(0, 0, width, height);
+    const background = ctx.createRadialGradient(centerX, centerY, 8, centerX, centerY, Math.max(width, height) * .75);
+    background.addColorStop(0, '#0f1b35');
+    background.addColorStop(1, '#080d1b');
+    ctx.fillStyle = background;
+    ctx.fillRect(0, 0, width, height);
+
+    stars.forEach(star => {
+        ctx.fillStyle = `rgba(191,211,255,${star.alpha * (.75 + Math.sin(timestamp * .0007 + star.phase) * .25)})`;
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    const orbitGlow = ctx.createRadialGradient(centerX, centerY, orbitRadiusY * .78, centerX, centerY, orbitRadiusX + 25);
+    orbitGlow.addColorStop(0, 'rgba(40,77,133,0)');
+    orbitGlow.addColorStop(1, 'rgba(40,77,133,.08)');
+    ctx.fillStyle = orbitGlow;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.setLineDash([3, 6]);
+    ctx.strokeStyle = 'rgba(123,158,218,.44)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(centerX, centerY, orbitRadiusX, orbitRadiusY, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    const connector = ctx.createLinearGradient(centerX, centerY, moonX, moonY);
+    connector.addColorStop(0, 'rgba(114,184,255,.05)');
+    connector.addColorStop(.55, 'rgba(114,184,255,.6)');
+    connector.addColorStop(1, 'rgba(221,233,255,.7)');
+    ctx.strokeStyle = connector;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 5]);
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY);
+    ctx.lineTo(moonX, moonY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    const glow = ctx.createRadialGradient(centerX, centerY, earthRadius * .7, centerX, centerY, earthRadius * 1.55);
+    glow.addColorStop(0, 'rgba(66,157,255,.18)');
+    glow.addColorStop(1, 'rgba(66,157,255,0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, earthRadius * 1.55, 0, Math.PI * 2);
+    ctx.fill();
+    drawEarth(centerX, centerY, earthRadius, rotation + dragRotation);
+
+    ctx.save();
+    ctx.shadowColor = '#e0e6f7';
+    ctx.shadowBlur = 18;
+    const moonGradient = ctx.createRadialGradient(moonX - moonRadius * .3, moonY - moonRadius * .35, 1, moonX, moonY, moonRadius * 1.15);
+    moonGradient.addColorStop(0, '#f4f4f0');
+    moonGradient.addColorStop(.7, '#c6cbd8');
+    moonGradient.addColorStop(1, '#7f889d');
+    ctx.fillStyle = moonGradient;
+    ctx.beginPath();
+    ctx.arc(moonX, moonY, moonRadius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = 'rgba(94,103,124,.28)';
+    [[-.3, -.15, .16], [.2, -.38, .11], [.35, .2, .19], [-.18, .4, .1]].forEach(([cx, cy, r]) => {
+        ctx.beginPath();
+        ctx.arc(moonX + cx * moonRadius * 2, moonY + cy * moonRadius * 2, r * moonRadius, 0, Math.PI * 2);
+        ctx.fill();
+    });
+    ctx.restore();
+
+    const labelFont = Math.max(10, Math.min(12, 11 * scale));
+    ctx.font = `${labelFont}px "DM Mono", monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#bcd0f6';
+    ctx.fillText('EARTH', centerX, centerY + earthRadius + 20);
+    ctx.fillStyle = '#d7dced';
+    ctx.fillText('MOON', moonX, moonY + moonRadius + 17);
+    ctx.font = `${Math.max(9, labelFont - 1)}px "DM Mono", monospace`;
+    ctx.fillStyle = 'rgba(185,204,238,.84)';
+    ctx.fillText(`${Math.round(orbital.distance).toLocaleString('en-US')} km`, (centerX + moonX) / 2, (centerY + moonY) / 2 - 9);
+    ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(130,152,192,.65)';
+    ctx.font = '9px "DM Mono", monospace';
+    ctx.fillText('SCHEMATIC · NOT TO SCALE', 18, 24);
+
+    if (!isDragging) rotation += .00025;
+    window.requestAnimationFrame(drawScene);
 }
 
-// Initialize
-fetchAstronauts();
-fetchISSPosition();
-animate();
+function openCrewDetails(craftName) {
+    const astronauts = fallbackData.people.filter(person => person.craft === craftName).map(person => person.name);
+    const craftInfo = spacecraftDatabase[craftName];
+    const body = document.getElementById('modal-body');
+    document.getElementById('modal-title').textContent = craftInfo.fullName;
+    body.replaceChildren();
 
-// Update simulated spacecraft positions continuously for smooth orbit
-setInterval(() => {
-    updateISSPosition();
-    updateTiangongPosition();
-}, 100);
+    const position = document.createElement('section');
+    position.className = 'position-info';
+    const heading = document.createElement('h3');
+    heading.textContent = 'Orbital information';
+    position.appendChild(heading);
+    [craftInfo.orbit, `Speed: ${craftInfo.speed}`, `Launched: ${craftInfo.launched}`].forEach(text => {
+        const paragraph = document.createElement('p');
+        paragraph.textContent = text;
+        position.appendChild(paragraph);
+    });
+    body.appendChild(position);
+
+    const crewSection = document.createElement('section');
+    crewSection.className = 'astronaut-section';
+    const crewHeading = document.createElement('h3');
+    crewHeading.textContent = `Crew (${astronauts.length})`;
+    crewSection.appendChild(crewHeading);
+    astronauts.forEach(name => {
+        const link = document.createElement('a');
+        link.className = 'astronaut-item astronaut-link';
+        link.href = `https://en.wikipedia.org/wiki/${encodeURIComponent(name.replace(/ /g, '_'))}`;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = name;
+        crewSection.appendChild(link);
+    });
+    body.appendChild(crewSection);
+
+    const timeline = document.createElement('section');
+    timeline.className = 'timeline';
+    const timelineHeading = document.createElement('h3');
+    timelineHeading.textContent = 'Mission timeline';
+    timeline.appendChild(timelineHeading);
+    craftInfo.timeline.forEach(item => {
+        const wrapper = document.createElement(item.url ? 'a' : 'div');
+        wrapper.className = item.url ? 'timeline-item timeline-link' : 'timeline-item';
+        if (item.url) {
+            wrapper.href = item.url;
+            wrapper.target = '_blank';
+            wrapper.rel = 'noopener noreferrer';
+        }
+        const date = document.createElement('div');
+        date.className = 'timeline-date';
+        date.textContent = item.date;
+        const event = document.createElement('div');
+        event.className = 'timeline-event';
+        event.textContent = item.event;
+        wrapper.append(date, event);
+        timeline.appendChild(wrapper);
+    });
+    body.appendChild(timeline);
+    const modal = document.getElementById('modal');
+    modal.classList.add('is-open');
+    modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeModal() {
+    const modal = document.getElementById('modal');
+    modal.classList.remove('is-open');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+document.getElementById('iss-crew-button').addEventListener('click', () => openCrewDetails('ISS'));
+document.getElementById('tiangong-crew-button').addEventListener('click', () => openCrewDetails('Tiangong'));
+document.querySelector('.close').addEventListener('click', closeModal);
+document.getElementById('modal').addEventListener('click', event => {
+    if (event.target === event.currentTarget) closeModal();
+});
+window.addEventListener('keydown', event => {
+    if (event.key === 'Escape') closeModal();
+});
+canvas.addEventListener('pointerdown', event => {
+    isDragging = true;
+    lastPointerX = event.clientX;
+    canvas.setPointerCapture(event.pointerId);
+});
+canvas.addEventListener('pointermove', event => {
+    if (!isDragging) return;
+    dragRotation += (event.clientX - lastPointerX) * .006;
+    lastPointerX = event.clientX;
+});
+canvas.addEventListener('pointerup', () => { isDragging = false; });
+canvas.addEventListener('pointercancel', () => { isDragging = false; });
+window.addEventListener('resize', resizeCanvas);
+
+resizeCanvas();
+updateExplorer();
+window.requestAnimationFrame(drawScene);

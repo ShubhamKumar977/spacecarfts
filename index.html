@@ -3,34 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Spacecraft Tracker</title>
+    <meta name="theme-color" content="#070b18">
+    <meta name="description" content="Explore the Earth–Moon system and travel through a model of the Moon's orbit.">
+    <title>Earth–Moon Observatory</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <h1>🌍 Live Spacecraft Tracker</h1>
-        <div class="info-panel">
-            <h2>People in Space: <span id="count">Loading...</span></h2>
-            <p class="hint">Click on any spacecraft to view details</p>
-        </div>
-        <div class="globe-container">
-            <canvas id="globe"></canvas>
-        </div>
-        <div class="legend">
-            <p>🛸 Spacecraft positions update in real-time</p>
-            <p>🖱️ Drag to rotate the Earth</p>
-        </div>
-    </div>
-
-    <!-- Modal for spacecraft details -->
-    <div id="modal" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2 id="modal-title"></h2>
-            <div id="modal-body"></div>
-        </div>
-    </div>
-
+    <main class="page-shell">
+        <header class="topbar">
+            <a class="brand" href="./" aria-label="Earth-Moon Observatory home"><span class="brand-mark" aria-hidden="true">◉</span><span>ORBITAL <strong>OBSERVATORY</strong></span></a>
+            <span class="live-status"><span class="status-dot"></span> SOLAR SYSTEM / EARTH</span>
+        </header>
+        <section class="intro">
+            <div class="eyebrow">A closer look at our nearest neighbor</div>
+            <h1>One planet.<br><span>One remarkable distance.</span></h1>
+            <p>Watch the Moon move through its orbit and see how far away it is—then step through time to explore the journey.</p>
+        </section>
+        <section class="explorer" aria-label="Earth and Moon orbital explorer">
+            <div class="scene-card">
+                <div class="scene-heading"><div><span class="eyebrow">EARTH–MOON SYSTEM</span><h2>Orbital view</h2></div><span class="model-badge"><span class="status-dot"></span> ORBIT MODEL</span></div>
+                <div class="scene-wrap">
+                    <canvas id="globe" aria-label="Animated diagram of Earth, the Moon, and their orbit. Drag to rotate Earth."></canvas>
+                    <div class="scene-caption"><span><i class="legend-earth"></i> Earth</span><span><i class="legend-moon"></i> Moon</span><span><i class="legend-orbit"></i> Lunar orbit</span></div>
+                </div>
+                <div class="scene-footer"><span><span class="status-dot"></span> DISTANCE MODEL · NOT LIVE TELEMETRY</span><span>Orbit diagram is schematic · drag to rotate Earth</span></div>
+            </div>
+            <aside class="control-card" aria-label="Moon distance and time controls">
+                <div class="date-block"><span class="eyebrow">SELECTED DATE · UTC</span><time id="selected-date"></time><span class="date-context" id="date-context">Today</span></div>
+                <div class="distance-block"><span class="eyebrow">EARTH–MOON DISTANCE</span><div class="distance-value"><span id="distance">384,400</span><span class="unit">km</span></div><div class="distance-scale" aria-hidden="true"><span id="distance-marker"></span></div><div class="scale-labels"><span>Perigee · 363,300 km</span><span>Apogee · 405,500 km</span></div><p class="distance-note" id="distance-note">Average distance · about 30 Earth diameters</p></div>
+                <div class="phase-row"><span class="phase-icon" id="phase-icon" aria-hidden="true">◐</span><div><span class="eyebrow">LUNAR PHASE</span><strong id="phase-name">Waxing crescent</strong></div><span class="illumination" id="illumination">0% lit</span></div>
+                <div class="time-controls"><div class="control-title"><label for="time-slider">TRAVEL THROUGH TIME</label><button class="today-button" id="today-button" type="button">RESET TO TODAY</button></div><div class="time-buttons"><button id="back-button" type="button" aria-label="Go back one day">− 1 DAY</button><button id="forward-button" type="button" aria-label="Go forward one day">+ 1 DAY</button></div><input id="time-slider" type="range" min="-365" max="365" step="1" value="0" aria-label="Select a date up to one year in the past or future"><div class="range-labels"><span>1 YEAR AGO</span><span id="offset-label">TODAY</span><span>1 YEAR AHEAD</span></div><p class="control-hint">Choose any day within a year before or after today.</p></div>
+            </aside>
+        </section>
+        <section class="lower-grid">
+            <div class="fact-card"><span class="fact-icon" aria-hidden="true">↗</span><div><span class="eyebrow">ORBITAL RANGE</span><strong>363,300 – 405,500 km</strong><p>The Moon’s elliptical orbit brings it closer at perigee and farther away at apogee.</p></div></div>
+            <div class="fact-card crew-card"><span class="fact-icon crew-icon" aria-hidden="true">✦</span><div><span class="eyebrow">CREW SNAPSHOT</span><strong><span id="count">13</span> people listed</strong><p>Static roster and mission milestones from the original tracker.</p></div><div class="crew-actions"><button id="iss-crew-button" class="crew-button" type="button">ISS <span aria-hidden="true">↗</span></button><button id="tiangong-crew-button" class="crew-button" type="button">TIANGONG <span aria-hidden="true">↗</span></button></div></div>
+        </section>
+        <footer class="page-footer"><span>THE MOON’S ORBIT, MADE EXPLORABLE.</span><span>Distance is an approximate two-body orbital model, not an ephemeris.</span></footer>
+    </main>
+    <div id="modal" class="modal" aria-hidden="true"><div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-title"><button class="close" type="button" aria-label="Close dialog">&times;</button><h2 id="modal-title"></h2><div id="modal-body"></div></div></div>
     <script src="script.js"></script>
 </body>
 </html>

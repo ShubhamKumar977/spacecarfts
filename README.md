@@ -1,86 +1,33 @@
-# 🌍 Live Spacecraft Tracker
+# Earth–Moon Observatory
 
-An interactive 3D visualization of spacecraft orbiting Earth, showing real-time positions and crew information.
+A responsive, interactive Earth–Moon explorer built with plain HTML, CSS, JavaScript, and Canvas. The orbit visualization, distance readout, lunar phase, and date controls work offline without API keys or a build step.
 
-## Features
+## Explore
 
-- **Interactive 3D Globe**: Drag to rotate Earth and view spacecraft from different angles
-- **Real-time ISS Tracking**: Shows the International Space Station's actual position over Earth
-- **Clickable Spacecraft**: Click on any spacecraft to view detailed information
-- **Crew Information**: See all astronauts currently in space with links to their Wikipedia pages
-- **Mission Timeline**: Historical events and milestones for each spacecraft with source links
-- **Smooth Animations**: Realistic orbital mechanics and smooth Earth rotation
+- View an animated, schematic Earth–Moon orbit and drag to rotate the Earth.
+- See an approximate Earth–Moon distance and lunar phase for the selected date.
+- Use the slider or day-step controls to explore up to one year in the past or future; reset to today at any time.
+- Open the crew snapshot to browse the original station-crew and mission-timeline information.
 
-## How to Use
+## Model and accuracy
 
-1. **Open `index.html`** in your web browser
-2. **Drag the globe** to rotate and view different angles
-3. **Click on spacecraft** to see:
-   - Current crew members (click names to visit Wikipedia)
-   - Real-time position (latitude/longitude)
-   - Orbital information
-   - Mission timeline (click events for more details)
+The Moon's distance uses a deterministic elliptical-orbit approximation with a 27.55-day anomalistic period and eccentricity 0.0549, centered on the 384,400 km mean distance. Lunar phase uses the 29.53-day synodic period. These simplified calculations are intended for exploration, not navigation or precise ephemerides. The orbit drawing is schematic and not to scale. The included crew roster is a static snapshot inherited from the original demo, not live crew telemetry.
 
-## Technologies Used
+## Run locally
 
-- Pure JavaScript (Canvas API for 3D rendering)
-- HTML5 Canvas
-- CSS3 (Glassmorphism effects)
-- Open Notify API (for live spacecraft data)
+Open `index.html` directly in a modern browser, or serve this folder with any static HTTP server. No install or build command is needed.
 
-## Data Source
+## Deploy to GitHub Pages
 
-The app uses current astronaut data (as of November 2025) and simulates realistic ISS orbital mechanics:
-- **ISS Orbit**: 51.6° inclination, ~420 km altitude
-- **Orbital Period**: ~90 minutes per orbit
-- **Speed**: ~7.66 km/s (27,600 km/h)
+Publish the repository root as a GitHub Pages site (for example, select **Deploy from a branch**, the `main` branch, and `/(root)` in the repository's Pages settings). The page uses relative `style.css` and `script.js` URLs, so it works both at a custom-domain root and under a project-site base path such as `/repository-name/`. No external API or server-side routing is required.
 
-The simulation provides smooth, realistic spacecraft movement around Earth.
+Google Fonts are an optional visual enhancement; system font fallbacks are included if the font service is unavailable.
 
-## Project Structure
+## Project files
 
-```
-├── index.html      # Main HTML structure
-├── style.css       # Styling and animations
-├── script.js       # Canvas rendering and API logic
-└── README.md       # Documentation
-```
-
-## Features in Detail
-
-### Interactive Globe
-- Mouse drag to rotate Earth
-- Realistic 3D sphere with continents
-- Starfield background
-- Atmospheric glow effect
-
-### Spacecraft Visualization
-- Spacecraft appear at their actual lat/lon positions
-- Only visible when on the front side of Earth (realistic occlusion)
-- Animated solar panels and antennas
-- Orbit paths shown as dashed circles
-
-### Modal Information
-- Crew count and names
-- Current position coordinates
-- Orbital altitude and speed
-- Complete mission timeline with key events
-
-## Current Crew
-
-The app displays 13 people currently in space:
-- **ISS (International Space Station)**: 10 astronauts
-- **Tiangong (Chinese Space Station)**: 3 taikonauts
-
-Both stations have realistic orbital simulations showing their actual paths around Earth.
-
-## Future Enhancements
-
-- Add more spacecraft (Tiangong, future missions)
-- Show satellite constellations
-- Add day/night terminator line
-- Real-time altitude visualization
-- Spacecraft trajectory predictions
+- `index.html` — accessible page structure and controls
+- `style.css` — responsive visual design
+- `script.js` — orbital model, Canvas rendering, controls, and crew details
 
 ## License
 
