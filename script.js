@@ -16,6 +16,7 @@ let liveMode = true;
 let rotation = 0;
 let dragRotation = 0;
 let isDragging = false;
+let manualRotation = false;
 let pointerMoved = false;
 let lastPointerX = 0;
 let pointerStartX = 0;
@@ -24,7 +25,9 @@ let sceneWidth = 0;
 let sceneHeight = 0;
 let earthGeometry = null;
 let stars = [];
+let worldCountries = [];
 let selectedLocation = { latitude: 51.48, longitude: 0, name: 'Greenwich, United Kingdom' };
+let userSelectedLocation = false;
 let satellites = [];
 let telemetryState = 'connecting';
 let tiangongElements = null;
@@ -86,6 +89,126 @@ const continentOutlines = [
     [[-11,113],[-16,122],[-19,130],[-17,137],[-13,142],[-12,150],[-16,153],[-23,151],[-29,148],[-35,145],[-39,140],[-38,133],[-34,127],[-30,119],[-24,115],[-18,113],[-11,113]],
     [[60,-52],[64,-46],[70,-42],[76,-43],[81,-50],[83,-58],[80,-65],[75,-68],[69,-63],[64,-58],[60,-52]]
 ];
+
+const countryBorders = [
+    [[49,-123],[49,-110],[49,-102],[49,-95],[49,-90],[49,-83]],
+    [[46,-123],[42,-117],[39,-120],[35,-114],[32,-111]],
+    [[32,-117],[32,-110],[31,-106],[29,-103],[26,-99]],
+    [[25,-107],[23,-105],[21,-102],[19,-99],[17,-95],[16,-91]],
+    [[15,-92],[14,-89],[15,-87],[16,-84],[15,-83]],
+    [[8,-77],[7,-75],[5,-74],[2,-73],[-1,-70],[-4,-70]],
+    [[-4,-70],[-8,-70],[-13,-69],[-17,-69],[-22,-68],[-27,-69]],
+    [[-22,-58],[-23,-55],[-25,-54],[-28,-55],[-31,-58]],
+    [[-5,-74],[-9,-72],[-12,-74],[-16,-73],[-20,-70]],
+    [[-18,47],[-22,44],[-25,47],[-23,49],[-18,47]],
+    [[-3,30],[2,30],[5,30],[9,30],[12,31]],
+    [[5,2],[9,3],[11,8],[13,13],[15,15]],
+    [[-5,12],[-7,20],[-10,22],[-13,24],[-17,24]],
+    [[-17,24],[-22,25],[-25,25],[-29,24],[-30,28]],
+    [[22,25],[23,30],[22,33],[20,35]],
+    [[30,32],[29,34],[27,34],[25,34]],
+    [[42,28],[41,33],[40,36],[40,40],[41,44]],
+    [[46,24],[47,28],[46,30],[45,33],[44,36]],
+    [[48,17],[49,22],[50,24],[51,26],[53,25]],
+    [[50,-1],[51,1],[52,4],[53,7],[54,8]],
+    [[55,12],[56,15],[57,17],[58,20],[60,22]],
+    [[35,68],[34,70],[33,72],[31,74],[29,76]],
+    [[29,80],[27,83],[25,85],[23,88],[21,91]],
+    [[28,88],[27,91],[26,94],[25,97],[22,99]],
+    [[24,104],[22,106],[20,108],[18,109],[16,108]],
+    [[47,87],[45,93],[44,100],[43,105],[41,111]],
+    [[38,74],[37,78],[39,82],[40,87],[42,92]],
+    [[34,104],[33,108],[31,111],[29,114],[27,118]],
+    [[60,100],[58,110],[56,120],[55,130],[53,140]],
+    [[-26,123],[-28,128],[-30,133],[-31,138],[-33,141]]
+];
+
+const islandOutlines = [
+    [[50,-5],[51,-4],[52,-4],[54,-3],[55,-2],[56,-3],[58,-5],[57,-6],[55,-6],[54,-8],[52,-7],[51,-6],[50,-5]],
+    [[36,-10],[38,-9],[40,-8],[42,-8],[43,-6],[41,-2],[39,-1],[37,-3],[36,-7],[36,-10]],
+    [[40,7],[42,10],[44,12],[46,13],[45,16],[43,15],[41,13],[40,11],[40,7]],
+    [[34,11],[36,12],[38,14],[40,16],[41,18],[39,19],[37,17],[35,15],[34,11]],
+    [[31,129],[33,130],[35,132],[37,135],[39,139],[41,141],[43,144],[45,146],[44,141],[42,139],[40,136],[38,135],[36,134],[34,132],[33,130],[31,129]],
+    [[-6,106],[-5,108],[-5,111],[-6,114],[-8,114],[-9,112],[-8,109],[-7,107],[-6,106]],
+    [[-3,118],[-4,121],[-3,124],[-2,127],[-4,129],[-5,126],[-5,123],[-4,120],[-3,118]],
+    [[-8,130],[-8,134],[-6,137],[-5,141],[-7,144],[-9,142],[-10,138],[-9,134],[-8,130]],
+    [[-10,149],[-8,148],[-6,147],[-5,150],[-6,153],[-8,154],[-10,152],[-10,149]],
+    [[19,-71],[20,-73],[21,-75],[20,-77],[19,-78],[18,-76],[18,-73],[19,-71]],
+    [[12,-70],[13,-72],[15,-74],[17,-76],[18,-74],[17,-72],[15,-70],[13,-69],[12,-70]],
+    [[-54,-38],[-52,-36],[-50,-37],[-49,-40],[-50,-43],[-52,-42],[-54,-40],[-54,-38]]
+];
+
+function drawWorldCountries(centerX, centerY, radius) {
+    ctx.fillStyle = 'rgba(77,157,104,.97)';
+    ctx.strokeStyle = 'rgba(135,207,158,.95)';
+    ctx.lineWidth = .55;
+    worldCountries.forEach(country => country.rings.forEach(ring => {
+        ctx.beginPath();
+        let drawing = false;
+        ring.forEach(([longitude, latitude]) => {
+            const point = projectLocation(latitude, longitude, radius, centerX, centerY);
+            if (point.depth > 0) {
+                if (!drawing) ctx.moveTo(point.x, point.y);
+                else ctx.lineTo(point.x, point.y);
+                drawing = true;
+            } else if (drawing) {
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                ctx.beginPath();
+                drawing = false;
+            }
+        });
+        if (drawing) {
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+        }
+    }));
+    ctx.strokeStyle = 'rgba(19,81,82,.7)';
+    ctx.lineWidth = .45;
+    worldCountries.forEach(country => country.rings.forEach(ring => drawProjectedLine(
+        ring.map(([longitude, latitude]) => [latitude, longitude]), centerX, centerY, radius, false
+    )));
+}
+
+function findCountryAt(latitude, longitude) {
+    for (const country of worldCountries) {
+        for (const ring of country.rings) {
+            let inside = false;
+            for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+                const [xi, yi] = ring[i];
+                const [xj, yj] = ring[j];
+                const crossesLatitude = (yi > latitude) !== (yj > latitude);
+                const crossingLongitude = ((xj - xi) * (latitude - yi)) / (yj - yi) + xi;
+                if (crossesLatitude && longitude < crossingLongitude) inside = !inside;
+            }
+            if (inside) return country.name;
+        }
+    }
+    if (latitude > 75) return 'Arctic Ocean';
+    if (latitude < -55) return 'Southern Ocean';
+    if (longitude < -70 || longitude > 100) return 'Pacific Ocean';
+    if (longitude >= -70 && longitude < 20) return 'Atlantic Ocean';
+    return 'Indian Ocean';
+}
+
+async function loadWorldMap() {
+    try {
+        const response = await fetch('world-map.json');
+        if (!response.ok) throw new Error(`World map data responded ${response.status}`);
+        const map = await response.json();
+        if (!Array.isArray(map.countries) || map.countries.length < 100) {
+            throw new Error('World map data is incomplete');
+        }
+        worldCountries = map.countries;
+        const country = findCountryAt(selectedLocation.latitude, selectedLocation.longitude);
+        selectedLocation.name = userSelectedLocation ? country : `${country} · Greenwich`;
+        updateExplorer();
+    } catch (error) {
+        console.warn('Detailed world map unavailable; showing the built-in outline map.', error);
+    }
+}
 
 function resizeCanvas() {
     const rect = canvas.getBoundingClientRect();
@@ -164,22 +287,33 @@ function getMoonSkyPosition(date, latitude, longitude) {
         .000387933 * centuries * centuries - centuries * centuries * centuries / 38710000;
     const hourAngle = ((siderealDegrees + longitude) * degrees - rightAscension + Math.PI) % (2 * Math.PI) - Math.PI;
     const observerLatitude = latitude * degrees;
+    const horizontalParallax = Math.asin(6378.14 / getOrbitalState(date).distance);
+    const deltaRightAscension = Math.atan2(
+        -Math.cos(observerLatitude) * Math.sin(horizontalParallax) * Math.sin(hourAngle),
+        Math.cos(declination) - Math.cos(observerLatitude) * Math.sin(horizontalParallax) * Math.cos(hourAngle)
+    );
+    const topocentricDeclination = Math.atan2(
+        (Math.sin(declination) - Math.sin(observerLatitude) * Math.sin(horizontalParallax)) *
+            Math.cos(deltaRightAscension),
+        Math.cos(declination) - Math.cos(observerLatitude) * Math.sin(horizontalParallax) * Math.cos(hourAngle)
+    );
+    const topocentricHourAngle = hourAngle - deltaRightAscension;
     const altitude = Math.asin(
-        Math.sin(observerLatitude) * Math.sin(declination) +
-        Math.cos(observerLatitude) * Math.cos(declination) * Math.cos(hourAngle)
+        Math.sin(observerLatitude) * Math.sin(topocentricDeclination) +
+        Math.cos(observerLatitude) * Math.cos(topocentricDeclination) * Math.cos(topocentricHourAngle)
     );
     const azimuth = Math.atan2(
-        -Math.sin(hourAngle) * Math.cos(declination),
-        Math.sin(declination) * Math.cos(observerLatitude) -
-        Math.cos(declination) * Math.sin(observerLatitude) * Math.cos(hourAngle)
+        -Math.sin(topocentricHourAngle) * Math.cos(topocentricDeclination),
+        Math.sin(topocentricDeclination) * Math.cos(observerLatitude) -
+        Math.cos(topocentricDeclination) * Math.sin(observerLatitude) * Math.cos(topocentricHourAngle)
     );
     return {
         altitude: altitude / degrees,
         azimuth: (azimuth / degrees + 360) % 360,
         orientation: Math.atan2(
-            Math.sin(hourAngle),
-            Math.tan(observerLatitude) * Math.cos(declination) -
-            Math.sin(declination) * Math.cos(hourAngle)
+            Math.sin(topocentricHourAngle),
+            Math.tan(observerLatitude) * Math.cos(topocentricDeclination) -
+            Math.sin(topocentricDeclination) * Math.cos(topocentricHourAngle)
         )
     };
 }
@@ -235,6 +369,8 @@ function updateExplorer() {
         `Altitude ${moonSky.altitude.toFixed(1)}° · ${compassPoint} ${moonSky.azimuth.toFixed(0)}°`;
     document.getElementById('moon-visibility').textContent = moonSky.altitude >= 0 ? 'ABOVE HORIZON' : 'BELOW HORIZON';
     document.getElementById('moon-visibility').classList.toggle('is-visible', moonSky.altitude >= 0);
+    document.getElementById('moon-time-mode').textContent = liveMode ? 'LIVE UTC' : dayOffset === 0 ? 'TODAY · PAUSED' :
+        `${dayOffset < 0 ? 'PAST' : 'FUTURE'} · PAUSED`;
     if (!liveMode && telemetryState === 'live') {
         document.getElementById('telemetry-status').textContent = 'LIVE ISS MARKER HIDDEN · TIME-TRAVEL VIEW';
     } else if (liveMode && telemetryState === 'live' && satellites.length) {
@@ -242,6 +378,30 @@ function updateExplorer() {
     }
     drawMoonPhase(state, moonSky.orientation);
 }
+
+function updateRotationControl() {
+    const degrees = ((rotation + dragRotation) * 180 / Math.PI % 360 + 360) % 360;
+    const control = document.getElementById('globe-rotation');
+    const displayDegrees = manualRotation && Math.round(degrees) === 0 && Number(control.value) === 360
+        ? 360
+        : Math.round(degrees);
+    control.value = displayDegrees;
+    document.getElementById('rotation-value').value = `${displayDegrees}°`;
+    document.getElementById('rotation-value').textContent = `${displayDegrees}°`;
+}
+
+document.getElementById('globe-rotation').addEventListener('input', event => {
+    rotation = 0;
+    dragRotation = Number(event.target.value) * Math.PI / 180;
+    manualRotation = true;
+    updateRotationControl();
+});
+document.getElementById('rotation-reset').addEventListener('click', () => {
+    rotation = 0;
+    dragRotation = 0;
+    manualRotation = false;
+    updateRotationControl();
+});
 
 function setSelectedDate(offset, returnToLive = false) {
     const boundedOffset = Math.max(-365, Math.min(365, offset));
@@ -330,24 +490,51 @@ function drawEarth(x, y, radius) {
         for (let latitude = -90; latitude <= 90; latitude += 5) points.push([latitude, longitude]);
         drawProjectedLine(points, x, y, radius, false);
     }
-    ctx.strokeStyle = 'rgba(101,228,190,.92)';
-    ctx.lineWidth = 1.4;
-    ctx.fillStyle = 'rgba(60,186,139,.19)';
-    continentOutlines.forEach(outline => {
-        const visible = outline.map(([latitude, longitude]) => projectLocation(latitude, longitude, radius, x, y));
-        ctx.beginPath();
-        let drawing = false;
-        visible.forEach(point => {
-            if (point.depth > 0) {
-                if (!drawing) ctx.moveTo(point.x, point.y);
-                else ctx.lineTo(point.x, point.y);
-                drawing = true;
-            } else {
-                drawing = false;
+    const terrain = ctx.createLinearGradient(x - radius, y - radius, x + radius, y + radius);
+    terrain.addColorStop(0, 'rgba(128,197,135,.95)');
+    terrain.addColorStop(.5, 'rgba(91,169,116,.97)');
+    terrain.addColorStop(1, 'rgba(46,125,94,.98)');
+    if (worldCountries.length) {
+        drawWorldCountries(x, y, radius);
+    } else {
+        ctx.strokeStyle = 'rgba(101,228,190,.92)';
+        ctx.lineWidth = 1;
+        [...continentOutlines, ...islandOutlines].forEach(outline => {
+            const visible = outline.map(([latitude, longitude]) => projectLocation(latitude, longitude, radius, x, y));
+            ctx.beginPath();
+            let drawing = false;
+            visible.forEach(point => {
+                if (point.depth > 0) {
+                    if (!drawing) ctx.moveTo(point.x, point.y);
+                    else ctx.lineTo(point.x, point.y);
+                    drawing = true;
+                } else {
+                    if (drawing) {
+                        ctx.closePath();
+                        ctx.fillStyle = terrain;
+                        ctx.fill();
+                        ctx.stroke();
+                        ctx.beginPath();
+                    }
+                    drawing = false;
+                }
+            });
+            if (drawing) {
+                ctx.closePath();
+                ctx.fillStyle = terrain;
+                ctx.fill();
             }
+            ctx.stroke();
         });
-        ctx.stroke();
-    });
+        ctx.strokeStyle = 'rgba(15,76,79,.78)';
+        ctx.lineWidth = .8;
+        countryBorders.forEach(border => drawProjectedLine(border, x, y, radius, false));
+    }
+    ctx.fillStyle = 'rgba(235,247,255,.62)';
+    ctx.beginPath();
+    ctx.ellipse(x, y - radius * .9, radius * .45, radius * .075, 0, 0, Math.PI * 2);
+    ctx.ellipse(x, y + radius * .9, radius * .4, radius * .065, 0, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
 
     (liveMode ? satellites : []).forEach(satellite => {
@@ -486,7 +673,8 @@ function drawScene(timestamp) {
     ctx.fillStyle = 'rgba(130,152,192,.65)';
     ctx.font = '9px "DM Mono", monospace';
     ctx.fillText('ORBIT & DISTANCE SCHEMATIC · CLICK GLOBE FOR LOCAL SKY', 18, 24);
-    if (!isDragging) rotation += .00025;
+    if (!isDragging && !manualRotation) rotation += .00025;
+    updateRotationControl();
     window.requestAnimationFrame(drawScene);
 }
 
@@ -505,8 +693,9 @@ function selectGlobeLocation(pointerX, pointerY) {
     selectedLocation = {
         latitude,
         longitude: normalizedLongitude,
-        name: `${Math.abs(latitude).toFixed(1)}° ${latLabel}, ${Math.abs(normalizedLongitude).toFixed(1)}° ${lonLabel}`
+        name: `${worldCountries.length ? findCountryAt(latitude, normalizedLongitude) : 'Selected location'}`
     };
+    userSelectedLocation = true;
     updateExplorer();
 }
 
@@ -702,8 +891,9 @@ canvas.addEventListener('pointerdown', event => {
 canvas.addEventListener('pointermove', event => {
     if (!isDragging) return;
     const dx = event.clientX - lastPointerX;
-    if (Math.abs(event.clientX - pointerStartX) + Math.abs(event.clientY - pointerStartY) > 5) pointerMoved = true;
-    dragRotation += dx * .006;
+    if (Math.abs(event.clientX - pointerStartX) + Math.abs(event.clientY - pointerStartY) > 3) pointerMoved = true;
+    if (dx) manualRotation = true;
+    dragRotation += dx * .012;
     lastPointerX = event.clientX;
 });
 canvas.addEventListener('pointerup', event => {
@@ -725,7 +915,9 @@ window.addEventListener('resize', resizeCanvas);
 
 resizeCanvas();
 updateExplorer();
+updateRotationControl();
 window.requestAnimationFrame(drawScene);
+loadWorldMap().then(() => updateExplorer());
 updateSatelliteTelemetry();
 window.setInterval(() => {
     if (liveMode) {
